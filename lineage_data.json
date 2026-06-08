@@ -1,0 +1,78 @@
+{
+  "levels": [
+    {
+      "label": "Niveau 0 – Prérequis (non migrés)",
+      "cls": "lv0",
+      "nodes": [
+        { "id": "F700", "name": "Référentiel externe" }
+      ]
+    },
+    {
+      "label": "Niveau 1 – Données de base indépendantes",
+      "cls": "lv1",
+      "nodes": [
+        { "id": "F10",  "name": "Contacts" },
+        { "id": "F50",  "name": "Fournisseurs" },
+        { "id": "F100", "name": "Articles" },
+        { "id": "F150", "name": "Ressources" },
+        { "id": "F450", "name": "Emplacements" },
+        { "id": "F520", "name": "Prog. Projet" },
+        { "id": "F710", "name": "Modèles tâches" },
+        { "id": "F130", "name": "Tarification" }
+      ]
+    },
+    {
+      "label": "Niveau 2 – Dépend du Niveau 1",
+      "cls": "lv2",
+      "nodes": [
+        { "id": "F20",   "name": "Clients",          "deps": ["F10"] },
+        { "id": "F110",  "name": "Articles dérivés",  "deps": ["F100"] },
+        { "id": "F135",  "name": "Liens Art/Fourn",   "deps": ["F100"] },
+        { "id": "F140",  "name": "Assortiments",      "deps": ["F100"] },
+        { "id": "F145",  "name": "Catalogue",         "deps": ["F10", "F50"] },
+        { "id": "F460",  "name": "Obj. Fonctionnels", "deps": ["F700"] }
+      ]
+    },
+    {
+      "label": "Niveau 3 – Dépend du Niveau 2",
+      "cls": "lv3",
+      "nodes": [
+        { "id": "F137",  "name": "Opér. Gamme",      "deps": ["F110"] },
+        { "id": "F138",  "name": "Struct. Produit",  "deps": ["F110"] },
+        { "id": "F139",  "name": "Chaîne Prod.",     "deps": ["F110"] },
+        { "id": "F600",  "name": "Projets",          "deps": ["F10", "F50", "F450", "F460"] },
+        { "id": "F730",  "name": "Contrats Service", "deps": ["F10", "F460"] },
+        { "id": "F1450", "name": "Contrats Vente",   "deps": ["F10", "F20", "F450"] }
+      ]
+    },
+    {
+      "label": "Niveau 4 – Dépend du Niveau 3",
+      "cls": "lv4",
+      "nodes": [
+        { "id": "F610",  "name": "Sous-projets", "deps": ["F10", "F600"] },
+        { "id": "F740",  "name": "Actions MP",   "deps": ["F460", "F710", "F730", "F150"] },
+        { "id": "F1200", "name": "BT",           "deps": ["F20", "F460", "F150"] }
+      ]
+    },
+    {
+      "label": "Niveau 5 – Dépend du Niveau 4",
+      "cls": "lv5",
+      "nodes": [
+        { "id": "F630",  "name": "Activités Projet", "deps": ["F10", "F600", "F610"] },
+        { "id": "F1310", "name": "Cmd Achat",        "deps": ["F1200", "F50"] }
+      ]
+    },
+    {
+      "label": "Niveau 6 – Clôture / Comptabilité",
+      "cls": "lv6",
+      "nodes": [
+        { "id": "F1000", "name": "Stocks",           "deps": ["F210"] },
+        { "id": "F1430", "name": "Encours Projet",   "deps": ["F400", "F1760"] },
+        { "id": "F1710", "name": "Soldes ouverture", "deps": [] },
+        { "id": "F1720", "name": "Immobilisations",  "deps": [] },
+        { "id": "F1730", "name": "Factures Client",  "deps": ["F10", "F1700"] },
+        { "id": "F1740", "name": "Factures Fourn.",  "deps": ["F50", "F1700"] }
+      ]
+    }
+  ]
+}
