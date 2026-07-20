@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lineage migration v2</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f5f4f0;
+      color: #2c2c2a;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1e1e1c; color: #d3d1c7; }
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: #2c2c2a;
+    }
+    @media (prefers-color-scheme: dark) { h1 { color: #d3d1c7; } }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid rgba(0,0,0,.1);
+      padding-bottom: 0;
+    }
+    @media (prefers-color-scheme: dark) { .tabs { border-bottom-color: rgba(255,255,255,.1); } }
+
+    .tab-btn {
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #888780;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      border-radius: 4px 4px 0 0;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .tab-btn:hover { color: #2c2c2a; background: rgba(0,0,0,.04); }
+    .tab-btn.active { color: #2c2c2a; border-bottom-color: #2c2c2a; }
+    @media (prefers-color-scheme: dark) {
+      .tab-btn:hover { color: #d3d1c7; background: rgba(255,255,255,.06); }
+      .tab-btn.active { color: #d3d1c7; border-bottom-color: #d3d1c7; }
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: #5f5e5a;
+    }
+    @media (prefers-color-scheme: dark) { .legend { color: #888780; } }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Level sections (Tab 1) ── */
+    .level-section { margin-bottom: 8px; }
+    .level-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #888780;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 6px;
+      padding-left: 2px;
+    }
+    .nodes-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
+
+    /* ── Node chips ── */
+    .node {
+      border-radius: 6px;
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: opacity .15s, transform .12s, filter .12s;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .node:hover { filter: brightness(1.07); transform: translateY(-1px); }
+    .node.active { outline: 2px solid #2c2c2a; outline-offset: 2px; }
+    .node.dimmed { opacity: .15; }
+    @media (prefers-color-scheme: dark) { .node.active { outline-color: #d3d1c7; } }
+
+    .node-code { font-weight: 700; margin-right: 4px; }
+    .node-name { font-weight: 400; opacity: .85; }
+
+    /* ── Level color classes ── */
+    .lv0 { background:#D3D1C7; color:#2C2C2A; border-color:#B4B2A9; }
+    .lv1 { background:#B5D4F4; color:#042C53; border-color:#85B7EB; }
+    .lv2 { background:#9FE1CB; color:#04342C; border-color:#5DCAA5; }
+    .lv3 { background:#FAC775; color:#412402; border-color:#EF9F27; }
+    .lv4 { background:#F5C4B3; color:#4A1B0C; border-color:#F0997B; }
+    .lv5 { background:#CECBF6; color:#26215C; border-color:#AFA9EC; }
+    .lv6 { background:#C0DD97; color:#173404; border-color:#97C459; }
+
+    @media (prefers-color-scheme: dark) {
+      .lv0 { background:#444441; color:#D3D1C7; border-color:#5F5E5A; }
+      .lv1 { background:#0C447C; color:#B5D4F4; border-color:#185FA5; }
+      .lv2 { background:#085041; color:#9FE1CB; border-color:#0F6E56; }
+      .lv3 { background:#633806; color:#FAC775; border-color:#854F0B; }
+      .lv4 { background:#712B13; color:#F5C4B3; border-color:#993C1D; }
+      .lv5 { background:#3C3489; color:#CECBF6; border-color:#534AB7; }
+      .lv6 { background:#27500A; color:#C0DD97; border-color:#3B6D11; }
+    }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: rgba(0,0,0,.08); margin: 8px 0 2px; }
+    @media (prefers-color-scheme: dark) { .divider { background: rgba(255,255,255,.08); } }
+
+    /* ── Detail panel (Tab 1) ── */
+    .deps-panel {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,.1);
+      font-size: 12px;
+      color: #5f5e5a;
+      min-height: 60px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .deps-panel { background: #2a2a28; border-color: rgba(255,255,255,.1); color: #888780; }
+    }
+    .deps-panel h4 {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2c2c2a;
+      margin-bottom: 10px;
+    }
+    @media (prefers-color-scheme: dark) { .deps-panel h4 { color: #d3d1c7; } }
+
+    .dep-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+    .dep-label {
+      font-size: 11px;
+      color: #888780;
+      width: 72px;
+      flex-shrink: 0;
+      padding-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .dep-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .dep-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: filter .12s;
+    }
+    .dep-tag:hover { filter: brightness(1.1); }
+    .hint { color: #888780; font-size: 12px; }
+
+    /* ── Error banner ── */
+    .error {
+      background: #fcebeb;
+      border: 1px solid #f09595;
+      color: #a32d2d;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .error { background: #501313; border-color: #791f1f; color: #f7c1c1; }
+    }
+
+    /* ═══════════════════════════════════════════
+       TAB 2 – GRAPHE LINEAGE
+    ═══════════════════════════════════════════ */
+
+    .graph-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .graph-toolbar label {
+      font-size: 12px;
+      color: #5f5e5a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    @media (prefers-color-scheme: dark) { .graph-toolbar label { color: #888780; } }
+
+    .graph-toolbar input[type=range] { width: 100px; }
+
+    .btn-reset {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 5px;
+      border: 1px solid rgba(0,0,0,.15);
+      background: #fff;
+      cursor: pointer;
+      color: #2c2c2a;
+      transition: background .12s;
+    }
+    .btn-reset:hover { background: #eee; }
+    @media (prefers-color-scheme: dark) {
+      .btn-reset { background: #333331; border-color: rgba(255,255,255,.15); color: #d3d1c7; }
+      .btn-reset:hover { background: #444441; }
+    }
+
+    /* Canvas wrapper – scrollable */
+    .canvas-wrapper {
+      position: relative;
+      overflow: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,.1);
+      background: #fff;
+      cursor: grab;
+    }
+    .canvas-wrapper:active { cursor: grabbing; }
+    @media (prefers-color-scheme: dark) {
+      .canvas-wrapper { background: #2a2a28; border-color: rgba(255,255,255,.1); }
+    }
+
+    #lineage-canvas {
+      display: block;
+      /* width/height set by JS */
+    }
+
+    /* Tooltip */
+    .graph-tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: rgba(30,30,28,.88);
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      max-width: 220px;
+      z-index: 999;
+      display: none;
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Lineage migration</h1>
+  <div id="error-banner" class="error" style="display:none"></div>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-list">📋 Vue par niveaux</button>
+    <button class="tab-btn"        data-tab="tab-graph">🔗 Graphe de dépendances</button>
+  </div>
+
+  <!-- ══════════ TAB 1 ══════════ -->
+  <div id="tab-list" class="tab-content active">
+    <div class="legend" id="legend"></div>
+    <div id="levels-container"></div>
+    <div class="deps-panel" id="deps-panel">
+      <p class="hint">Cliquez sur un fichier pour voir ses dépendances et les fichiers qui en dépendent.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB 2 ══════════ -->
+  <div id="tab-graph" class="tab-content">
+    <div class="legend" id="legend2"></div>
+    <div class="graph-toolbar">
+      <label>Zoom
+        <input type="range" id="zoom-slider" min="40" max="160" value="100" step="5">
+        <span id="zoom-val">100%</span>
+      </label>
+      <button class="btn-reset" id="btn-reset-zoom">Réinitialiser</button>
+      <span style="font-size:11px;color:#888780">Survolez un nœud pour voir ses dépendances · Cliquez pour figer la sélection</span>
+    </div>
+    <div class="canvas-wrapper" id="canvas-wrapper" style="height: 78vh;">
+      <canvas id="lineage-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="graph-tooltip" id="graph-tooltip"></div>
+
+  <script>
+    const DATA_FILE = 'lineage_data.json';
+
+    /* ─────────────────────────────────────────
+       SHARED STATE
+    ───────────────────────────────────────── */
+    let allNodes    = {};
+    let allCls      = {};
+    let dependents  = {};
+    let activeId    = null;
+    let levels      = [];
+
+    /* ─────────────────────────────────────────
+       LOAD
+    ───────────────────────────────────────── */
+    async function loadData() {
+      try {
+        const res = await fetch(DATA_FILE);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        const banner = document.getElementById('error-banner');
+        banner.style.display = 'block';
+        banner.textContent = `Erreur de chargement : ${err.message}. Assurez-vous que "${DATA_FILE}" est dans le même dossier et que vous utilisez un serveur local.`;
+        return null;
+      }
+    }
+
+    function buildLookups(data) {
+      levels = data.levels;
+      levels.forEach(lv => {
+        lv.nodes.forEach(n => {
+          allNodes[n.id] = n;
+          allCls[n.id]   = lv.cls;
+        });
+      });
+      levels.forEach(lv => {
+        lv.nodes.forEach(n => {
+          (n.deps || []).forEach(dep => {
+            if (!dependents[dep]) dependents[dep] = [];
+            dependents[dep].push(n.id);
+          });
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       TABS
+    ───────────────────────────────────────── */
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'tab-graph') drawGraph();
+      });
+    });
+
+    /* ─────────────────────────────────────────
+       TAB 1 – LIST VIEW  (original logic)
+    ───────────────────────────────────────── */
+    function buildLegend() {
+      ['legend','legend2'].forEach(id => {
+        const legend = document.getElementById(id);
+        legend.innerHTML = '';
+        levels.forEach(lv => {
+          const item = document.createElement('div');
+          item.className = 'legend-item';
+          item.innerHTML = `<div class="legend-dot ${lv.cls}"></div><span>${lv.label}</span>`;
+          legend.appendChild(item);
+        });
+      });
+    }
+
+    function renderList() {
+      const container = document.getElementById('levels-container');
+      container.innerHTML = '';
+      levels.forEach(lv => {
+        const sec = document.createElement('div');
+        sec.className = 'level-section';
+        const lbl = document.createElement('div');
+        lbl.className = 'level-label';
+        lbl.textContent = lv.label;
+        sec.appendChild(lbl);
+        const row = document.createElement('div');
+        row.className = 'nodes-row';
+        lv.nodes.forEach(n => {
+          const nd = document.createElement('div');
+          nd.className = 'node ' + lv.cls;
+          nd.dataset.id = n.id;
+          if (activeId) {
+            const myDeps      = (allNodes[activeId] && allNodes[activeId].deps) || [];
+            const myDependents = dependents[activeId] || [];
+            const relevant    = [activeId, ...myDeps, ...myDependents];
+            if (!relevant.includes(n.id)) nd.classList.add('dimmed');
+            if (n.id === activeId)        nd.classList.add('active');
+          }
+          nd.innerHTML = `<span class="node-code">${n.id}</span><span class="node-name">${n.name}</span>`;
+          nd.addEventListener('click', () => {
+            activeId = (activeId === n.id) ? null : n.id;
+            renderList();
+            updatePanel();
+          });
+          row.appendChild(nd);
+        });
+        sec.appendChild(row);
+        const div = document.createElement('div'); div.className = 'divider';
+        sec.appendChild(div);
+        container.appendChild(sec);
+      });
+    }
+
+    function updatePanel() {
+      const panel = document.getElementById('deps-panel');
+      if (!activeId) {
+        panel.innerHTML = '<p class="hint">Cliquez sur un fichier pour voir ses dépendances et les fichiers qui en dépendent.</p>';
+        return;
+      }
+      const n      = allNodes[activeId];
+      const myDeps = (n && n.deps) || [];
+      const myDeps2 = dependents[activeId] || [];
+      let html = `<h4>${activeId} – ${n ? n.name : ''}</h4>`;
+      html += '<div class="dep-row"><div class="dep-label">Dépend de</div><div class="dep-tags">';
+      if (!myDeps.length) html += '<span style="color:#888780;font-size:11px">Aucune dépendance</span>';
+      else myDeps.forEach(dep => {
+        const cls = allCls[dep] || 'lv0';
+        const nm  = allNodes[dep] ? allNodes[dep].name : '?';
+        html += `<span class="dep-tag ${cls}" onclick="selectNode('${dep}')">${dep} ${nm}</span>`;
+      });
+      html += '</div></div>';
+      html += '<div class="dep-row"><div class="dep-label">Requis par</div><div class="dep-tags">';
+      if (!myDeps2.length) html += '<span style="color:#888780;font-size:11px">Aucun fichier dépendant</span>';
+      else myDeps2.forEach(dep => {
+        const cls = allCls[dep] || 'lv0';
+        const nm  = allNodes[dep] ? allNodes[dep].name : '?';
+        html += `<span class="dep-tag ${cls}" onclick="selectNode('${dep}')">${dep} ${nm}</span>`;
+      });
+      html += '</div></div>';
+      panel.innerHTML = html;
+    }
+
+    function selectNode(id) {
+      activeId = id;
+      renderList();
+      updatePanel();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.selectNode = selectNode;
+
+    /* ─────────────────────────────────────────
+       TAB 2 – CANVAS GRAPH
+    ───────────────────────────────────────── */
+
+    /* ── Color map: css class → fill/stroke/text ── */
+    const COLOR_LIGHT = {
+      lv0: { fill:'#D3D1C7', stroke:'#B4B2A9', text:'#2C2C2A' },
+      lv1: { fill:'#B5D4F4', stroke:'#85B7EB', text:'#042C53' },
+      lv2: { fill:'#9FE1CB', stroke:'#5DCAA5', text:'#04342C' },
+      lv3: { fill:'#FAC775', stroke:'#EF9F27', text:'#412402' },
+      lv4: { fill:'#F5C4B3', stroke:'#F0997B', text:'#4A1B0C' },
+      lv5: { fill:'#CECBF6', stroke:'#AFA9EC', text:'#26215C' },
+      lv6: { fill:'#C0DD97', stroke:'#97C459', text:'#173404' },
+    };
+    const COLOR_DARK = {
+      lv0: { fill:'#444441', stroke:'#5F5E5A', text:'#D3D1C7' },
+      lv1: { fill:'#0C447C', stroke:'#185FA5', text:'#B5D4F4' },
+      lv2: { fill:'#085041', stroke:'#0F6E56', text:'#9FE1CB' },
+      lv3: { fill:'#633806', stroke:'#854F0B', text:'#FAC775' },
+      lv4: { fill:'#712B13', stroke:'#993C1D', text:'#F5C4B3' },
+      lv5: { fill:'#3C3489', stroke:'#534AB7', text:'#CECBF6' },
+      lv6: { fill:'#27500A', stroke:'#3B6D11', text:'#C0DD97' },
+    };
+
+    function isDark() {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    function getColors() { return isDark() ? COLOR_DARK : COLOR_LIGHT; }
+
+    /* ── Layout constants (logical pixels, scaled by zoom) ── */
+    const NODE_W   = 160;
+    const NODE_H   = 38;
+    const PAD_X    = 36;   // gap between nodes on same row
+    const PAD_Y    = 80;   // gap between rows
+    const ROW_TOP  = 40;   // top margin
+
+    let nodePositions = {}; // id -> {x, y, w, h}
+    let zoom = 1.0;
+    let hoveredId  = null;
+    let pinnedId   = null;   // click-pinned node in graph
+    let animFrame  = null;
+
+    /* ── Build layout ── */
+    function buildLayout() {
+      nodePositions = {};
+      levels.forEach((lv, li) => {
+        const count  = lv.nodes.length;
+        const rowW   = count * NODE_W + (count - 1) * PAD_X;
+        // We'll centre-align rows later in draw (use x offset per node)
+        lv.nodes.forEach((n, ni) => {
+          nodePositions[n.id] = {
+            x: ni * (NODE_W + PAD_X),
+            y: li * (NODE_H + PAD_Y) + ROW_TOP,
+            w: NODE_W,
+            h: NODE_H,
+            lvIndex: li,
+            niIndex: ni,
+            count,
+          };
+        });
+      });
+    }
+
+    /* ── Canvas setup ── */
+    function setupCanvas() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      const canvas  = document.getElementById('lineage-canvas');
+      const dpr     = window.devicePixelRatio || 1;
+
+      // Compute needed logical size
+      let maxW = 0, maxH = 0;
+      Object.values(nodePositions).forEach(p => {
+        const right  = p.x + p.w;
+        const bottom = p.y + p.h;
+        if (right  > maxW) maxW = right;
+        if (bottom > maxH) maxH = bottom;
+      });
+
+      // Add margins for centring (we'll offset each row during draw)
+      // Find widest row
+      let wideRow = 0;
+      levels.forEach(lv => {
+        const rw = lv.nodes.length * NODE_W + (lv.nodes.length - 1) * PAD_X;
+        if (rw > wideRow) wideRow = rw;
+      });
+
+      const logW = Math.max(wideRow + PAD_X * 2, 600);
+      const logH = maxH + NODE_H + PAD_Y;
+
+      const scaledW = Math.round(logW  * zoom);
+      const scaledH = Math.round(logH  * zoom);
+
+      canvas.width  = scaledW * dpr;
+      canvas.height = scaledH * dpr;
+      canvas.style.width  = scaledW + 'px';
+      canvas.style.height = scaledH + 'px';
+
+      return { canvas, dpr, logW, logH };
+    }
+
+    /* ── Draw ── */
+    function drawGraph() {
+      if (!levels.length) return;
+      buildLayout();
+      const { canvas, dpr, logW } = setupCanvas();
+      const ctx = canvas.getContext('2d');
+      const dpiZ = zoom * dpr;
+      ctx.setTransform(dpiZ, 0, 0, dpiZ, 0, 0);
+
+      const C    = getColors();
+      const bg   = isDark() ? '#2a2a28' : '#ffffff';
+      const edgeColor = isDark() ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.15)';
+      const edgeHl    = isDark() ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.55)';
+      const edgeDim   = isDark() ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.04)';
+
+      ctx.clearRect(0, 0, logW * 10, 99999);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, logW * 10, 99999);
+
+      /* Row offsets for centring */
+      const rowOffsets = {};
+      levels.forEach((lv, li) => {
+        const rw = lv.nodes.length * (NODE_W + PAD_X) - PAD_X;
+        rowOffsets[li] = (logW - rw) / 2;
+      });
+
+      /* Effective position helper */
+      function pos(id) {
+        const p = nodePositions[id];
+        if (!p) return null;
+        return {
+          x: p.x + rowOffsets[p.lvIndex],
+          y: p.y,
+          cx: p.x + rowOffsets[p.lvIndex] + p.w / 2,
+          cy: p.y + p.h / 2,
+          w: p.w, h: p.h,
+        };
+      }
+
+      /* Determine highlight set */
+      const focusId = pinnedId || hoveredId;
+      let highlightSet = new Set();
+      let highlightEdges = new Set(); // "srcId->tgtId"
+      if (focusId) {
+        highlightSet.add(focusId);
+        const deps = (allNodes[focusId] && allNodes[focusId].deps) || [];
+        deps.forEach(d => { highlightSet.add(d); highlightEdges.add(d + '->' + focusId); });
+        const dpts = dependents[focusId] || [];
+        dpts.forEach(d => { highlightSet.add(d); highlightEdges.add(focusId + '->' + d); });
+      }
+
+      /* ── Draw edges ── */
+      levels.forEach(lv => {
+        lv.nodes.forEach(n => {
+          (n.deps || []).forEach(depId => {
+            const src = pos(depId);
+            const tgt = pos(n.id);
+            if (!src || !tgt) return;
+
+            const key = depId + '->' + n.id;
+            const isHl = focusId && highlightEdges.has(key);
+            const isDim = focusId && !isHl;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = isDim ? edgeDim : (isHl ? edgeHl : edgeColor);
+            ctx.lineWidth   = isHl ? 2.5 : 1.2;
+            ctx.globalAlpha = 1;
+
+            // Bezier from bottom-centre of src to top-centre of tgt
+            const x1 = src.cx, y1 = src.y + src.h;
+            const x2 = tgt.cx, y2 = tgt.y;
+            const cp = (y2 - y1) * 0.5;
+
+            ctx.moveTo(x1, y1);
+            ctx.bezierCurveTo(x1, y1 + cp, x2, y2 - cp, x2, y2);
+            ctx.stroke();
+
+            /* Arrowhead */
+            if (!isDim) {
+              const angle = Math.atan2(y2 - (y2 - cp), x2 - x2) + Math.PI / 2;
+              const aLen  = isHl ? 8 : 6;
+              ctx.beginPath();
+              ctx.fillStyle = isDim ? edgeDim : (isHl ? edgeHl : edgeColor);
+              ctx.moveTo(x2, y2);
+              ctx.lineTo(
+                x2 - aLen * Math.cos(angle - Math.PI / 6),
+                y2 - aLen * Math.sin(angle - Math.PI / 6)
+              );
+              ctx.lineTo(
+                x2 - aLen * Math.cos(angle + Math.PI / 6),
+                y2 - aLen * Math.sin(angle + Math.PI / 6)
+              );
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.restore();
+          });
+        });
+      });
+
+      /* ── Draw nodes ── */
+      levels.forEach((lv, li) => {
+        lv.nodes.forEach(n => {
+          const p = pos(n.id);
+          if (!p) return;
+          const col    = C[lv.cls] || C.lv0;
+          const isHl   = !focusId || highlightSet.has(n.id);
+          const isFocus = n.id === focusId;
+
+          ctx.save();
+          ctx.globalAlpha = isHl ? 1 : 0.12;
+
+          /* Shadow for focused */
+          if (isFocus) {
+            ctx.shadowColor   = col.stroke;
+            ctx.shadowBlur    = 12;
+            ctx.shadowOffsetY = 2;
+          }
+
+          /* Box */
+          const r = 7;
+          ctx.beginPath();
+          ctx.moveTo(p.x + r, p.y);
+          ctx.lineTo(p.x + p.w - r, p.y);
+          ctx.quadraticCurveTo(p.x + p.w, p.y, p.x + p.w, p.y + r);
+          ctx.lineTo(p.x + p.w, p.y + p.h - r);
+          ctx.quadraticCurveTo(p.x + p.w, p.y + p.h, p.x + p.w - r, p.y + p.h);
+          ctx.lineTo(p.x + r, p.y + p.h);
+          ctx.quadraticCurveTo(p.x, p.y + p.h, p.x, p.y + p.h - r);
+          ctx.lineTo(p.x, p.y + r);
+          ctx.quadraticCurveTo(p.x, p.y, p.x + r, p.y);
+          ctx.closePath();
+          ctx.fillStyle   = col.fill;
+          ctx.fill();
+          ctx.lineWidth   = isFocus ? 2.5 : 1;
+          ctx.strokeStyle = col.stroke;
+          ctx.stroke();
+
+          ctx.shadowBlur = 0;
+
+          /* ID label (bold) */
+          ctx.fillStyle  = col.text;
+          ctx.font       = `700 11px system-ui, sans-serif`;
+          ctx.textAlign  = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(n.id, p.cx, p.cy - 7);
+
+          /* Name label */
+          ctx.font       = `400 10px system-ui, sans-serif`;
+          ctx.globalAlpha *= .85;
+          ctx.fillText(n.name, p.cx, p.cy + 7, p.w - 10);
+
+          ctx.restore();
+        });
+      });
+
+      /* Level row labels on left */
+      levels.forEach((lv, li) => {
+        const p = nodePositions[levels[li].nodes[0]?.id];
+        if (!p) return;
+        ctx.save();
+        ctx.font      = '500 9.5px system-ui, sans-serif';
+        ctx.fillStyle = isDark() ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.25)';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`Niv. ${li}`, 4, p.y + NODE_H / 2);
+        ctx.restore();
+      });
+    }
+
+    /* ── Hit-test ── */
+    function hitTest(canvasX, canvasY) {
+      const logW = parseInt(document.getElementById('lineage-canvas').style.width) / zoom;
+
+      const rowOffsets = {};
+      levels.forEach((lv, li) => {
+        const rw = lv.nodes.length * (NODE_W + PAD_X) - PAD_X;
+        rowOffsets[li] = (logW - rw) / 2;
+      });
+
+      for (const id in nodePositions) {
+        const p = nodePositions[id];
+        const ox = p.x + rowOffsets[p.lvIndex];
+        const oy = p.y;
+        if (canvasX >= ox && canvasX <= ox + p.w &&
+            canvasY >= oy && canvasY <= oy + p.h) {
+          return id;
+        }
+      }
+      return null;
+    }
+
+    /* ── Canvas events ── */
+    function initCanvasEvents() {
+      const canvas  = document.getElementById('lineage-canvas');
+      const wrapper = document.getElementById('canvas-wrapper');
+      const tooltip = document.getElementById('graph-tooltip');
+
+      function canvasCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left) / zoom,
+          y: (e.clientY - rect.top)  / zoom,
+        };
+      }
+
+      canvas.addEventListener('mousemove', e => {
+        const { x, y } = canvasCoords(e);
+        const hit = hitTest(x, y);
+        if (hit !== hoveredId) {
+          hoveredId = hit;
+          if (!pinnedId) schedDraw();
+        }
+        if (hit) {
+          const n    = allNodes[hit];
+          const deps = (n && n.deps) || [];
+          const dpts = dependents[hit] || [];
+          tooltip.style.display = 'block';
+          tooltip.style.left    = (e.clientX + 14) + 'px';
+          tooltip.style.top     = (e.clientY - 8)  + 'px';
+          tooltip.innerHTML =
+            `<strong>${hit}</strong> – ${n ? n.name : ''}<br>` +
+            `<span style="opacity:.75">Dépend de : ${deps.length ? deps.join(', ') : '—'}<br>` +
+            `Requis par : ${dpts.length ? dpts.join(', ') : '—'}</span>`;
+          canvas.style.cursor = 'pointer';
+        } else {
+          tooltip.style.display = 'none';
+          canvas.style.cursor   = '';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredId = null;
+        tooltip.style.display = 'none';
+        if (!pinnedId) schedDraw();
+      });
+
+      canvas.addEventListener('click', e => {
+        const { x, y } = canvasCoords(e);
+        const hit = hitTest(x, y);
+        if (hit === pinnedId) { pinnedId = null; }
+        else                  { pinnedId = hit; }
+        schedDraw();
+      });
+
+      /* Zoom slider */
+      const slider = document.getElementById('zoom-slider');
+      const zoomVal = document.getElementById('zoom-val');
+      slider.addEventListener('input', () => {
+        zoom = slider.value / 100;
+        zoomVal.textContent = slider.value + '%';
+        schedDraw();
+      });
+      document.getElementById('btn-reset-zoom').addEventListener('click', () => {
+        zoom = 1; slider.value = 100; zoomVal.textContent = '100%';
+        schedDraw();
+      });
+    }
+
+    function schedDraw() {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(drawGraph);
+    }
+
+    /* ─────────────────────────────────────────
+       BOOT
+    ───────────────────────────────────────── */
+    (async () => {
+      const data = await loadData();
+      if (!data) return;
+      buildLookups(data);
+      buildLegend();
+      renderList();
+      initCanvasEvents();
+
+      /* Redraw on system dark-mode toggle */
+      window.matchMedia('(prefers-color-scheme: dark)')
+            .addEventListener('change', () => { if (document.getElementById('tab-graph').classList.contains('active')) schedDraw(); });
+
+      /* Redraw on resize */
+      window.addEventListener('resize', () => {
+        if (document.getElementById('tab-graph').classList.contains('active')) schedDraw();
+      });
+    })();
+  </script>
+</body>
+</html>
